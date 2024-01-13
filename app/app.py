@@ -76,6 +76,8 @@ def get_powers_by_id(id):
          404)
         return response
 
+def updated_power_description(id):
+    
 
 
 if __name__ == '__main__':
