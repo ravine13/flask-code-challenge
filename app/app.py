@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, make_response,jsonify
+from flask import Flask, make_response,jsonify,request
 from flask_migrate import Migrate
 
 from models import db, Hero,Power,Hero_power
@@ -76,8 +76,53 @@ def get_powers_by_id(id):
          404)
         return response
 
-def updated_power_description(id):
-    
+def update_power(id):
+    power = Power.query.get(id)
+    if power is None:
+        return jsonify({'error': 'Power not found'}), 404
+
+    data = request.get_json()
+    if 'description' in data:
+        power.description = data['description']
+        db.session.commit()
+        return jsonify(power.to_dict()), 200
+
+    return jsonify({'error': 'No description provided'}), 400
+
+
+@app.route('/hero_power',method= ['POST'])
+def create_hero_power():
+    data = request.get_json()
+
+
+    if 'strength' not in data or 'power_id' not in data or 'hero_id' not in data:
+        return jsonify({'errors': ['Missing required fields']}
+                       
+        ), 400
+
+    power = Power.query.get(data['power_id'])
+    hero = Hero.query.get(data['hero_id'])
+
+    if power is None or hero is None:
+        return jsonify({'errors': ['Power or Hero not found']}
+        
+        ), 404
+
+    hero_power = Hero_power(strength=data['strength'], power_id=power.id, hero_id=hero.id)
+    db.session.add(hero_power)
+    db.session.commit()
+
+    hero = Hero.query.get(data['hero_id'])
+    powers_list = [{**hp.powers.to_dict()} for hp in hero.hero_powers]
+    response_data = {**hero.to_dict(), "powers": powers_list}
+
+    response = make_response(jsonify(
+        response_data
+    ),200)
+
+    return response
+
+
 
 
 if __name__ == '__main__':
