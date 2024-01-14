@@ -35,16 +35,28 @@ def seed_data():
         db.session.add(hero)
         db.session.commit()
 
+    hero_power_data = [
+    {"strength": "Weak", "powers_id": 1, "hero_id": 1},
+    {"strength": "Strong", "powers_id": 2, "hero_id": 2},
+    {"strength": "Average", "powers_id": 3, "hero_id": 3},
+    {"strength": "Strong", "powers_id": 4, "hero_id": 4},
+    {"strength": "Weak", "powers_id": 1, "hero_id": 5},
+    {"strength": "Average", "powers_id": 2, "hero_id": 6},
+    {"strength": "Strong", "powers_id": 3, "hero_id": 7},
+    {"strength": "Weak", "powers_id": 4, "hero_id": 8},
+    {"strength": "Strong", "powers_id": 1, "hero_id": 9},
+    {"strength": "Average", "powers_id": 2, "hero_id": 10},
 
-    strengths = ["Strong", "Weak", "Average"]
+    ]
 
-    for hero in Hero.query.all():
-        for _ in range(3):
-            power = Power.query.get(Power.query.order_by(db.func.random()).first().id)
-            hero= Hero(hero_power=hero,power=power,strength=strengths.pop())
 
-            db.session.add(Hero_power)
-            db.session.commit()
+    for hero_power in hero_power_data:
+        new_hero_power = Hero_power(**hero_power)
+
+        db.session.add(new_hero_power)
+        db.session.commit()
+
+
 
 if __name__ == '__main__':
     with app.app_context():
