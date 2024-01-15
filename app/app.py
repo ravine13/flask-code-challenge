@@ -2,10 +2,10 @@
 
 from flask import Flask, make_response,jsonify,request
 from flask_migrate import Migrate
-from flask_restful import Api, Resource
+from flask_restful import Api, Resource,reqparse
 from flask_marshmallow import Marshmallow
 from marshmallow import Schema, fields
-from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 from models import db, Hero,Power,Hero_power
 import os
 
@@ -19,12 +19,39 @@ api = Api(app)
 ma = Marshmallow(app)
 ma.init_app(app)
 
-class HeroSchema(SQLAlchemySchema):
+class HeroSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Hero
    
 
 hero_schema = HeroSchema()
+
+
+class PowerSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Power
+   
+
+power_schema = PowerSchema()
+
+class HeroPowerSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Hero_power
+        fields = ("id", "strength", "hero_id", "powers_id")
+
+heropower_schema = HeroPowerSchema()
+
+patch_args = reqparse.RequestParser(bundle_errors=True)
+patch_args.add_argument('id', type=int,help='id of the Power')
+patch_args.add_argument('name', type=str, help='Updated name of the Power')
+patch_args.add_argument('description', type=str, help='Updated description of the Power')
+patch_args.add_argument('hero_ids', type=int, action='append', help='List of Hero IDs to associate with the Power')
+
+
+post_args = reqparse.RequestParser(bundle_errors=True)
+post_args.add_argument('strength', type=str, help='Strength of the Hero_power', required=True)
+post_args.add_argument('hero_id', type=int, help='ID of the associated Hero', required=True)
+post_args.add_argument('powers_id', type=int, help='ID of the associated Power', required=True)
 
 @app.route('/')
 def home():
@@ -45,137 +72,94 @@ class Heroes(Resource):
     
 api.add_resource(Heroes, '/heros')
 
-# class HeroById(Resource):
-#     def get(self, id):
-#         hero = Hero.query.filter_by(id=id).first()
+class HeroById(Resource):
+    def get(self, id):
+        hero = Hero.query.filter_by(id=id).first()
 
-#         if hero is None:
-#             response = make_response(
-#                 jsonify({"error": "Hero not found"}),
-#                 404
-#             )
-#             return response
-#         else:
+        if hero is None:
+            response = make_response(
+                jsonify({"error": "Hero not found"}),
+                404
+            )
+            return response
+        else:
 
-#             return hero_schema.dump(hero)
+            return hero_schema.dump(hero)
 
-# api.add_resource(HeroById, '/hero/<int:id>')
+api.add_resource(HeroById, '/hero/<int:id>')
         
-# class Powers(Resource):
-#     def get(self):
-#         powers = Power.query.all()
-#         response = [power.to_dict() for power in powers]
-#         return jsonify(response)
-    
+class Powers(Resource):
+    def get(self):
+        powers = Power.query.all()
+        POWER =power_schema.dump(powers,many = True)
+        return make_response(
+            jsonify(POWER),
+            200
+        )
 
-# class PowersByID(Resource):
-#      def get(self, id):
-#         powers = Power.query.filter_by(id=id).first()
+api.add_resource(Powers, '/power')
 
-#         if powers is None:
-#             response = make_response(
-#                 jsonify({"error": "power not found"}),
-#                 404
-#             )
-#             return response
-#         else:
-#             response = powers.to_dict()
-#             return jsonify(response)
-        
-#     #  def patch(self,id):
-#     #      powers = Power.query.filter_by(id=id).first()
+class PowersByID(Resource):
+     def get(self, id):
+        powers = Power.query.filter_by(id=id).first()
 
-#     #      for key,value in request.json.items():
-#     #          setattr(powers,key,value)
-
-#     #          db.session.commit()
+        if powers is None:
+            response = make_response(
+                jsonify({"error": "power not found"}),
+                404
+            )
+            return response
+        else:
+            raven = power_schema.dump(powers)
 
 
-
-# api.add_resource(Powers, '/power')
-# api.add_resource(PowersByID, '/power/<int:id>')
-
-# @app.route('/heros/<int:id>', methods=['GET', 'PATCH'])
-# def get_heroes_by_id(id):
-#     hero = Hero.query.filter_by(id=id).first()
-
-#     if hero:
-#         powers_list = [{**hp.powers.to_dict()} for hp in hero.hero_powers]
-
-#         response_data = {**hero.to_dict(), "powers": powers_list}
-
-#         return jsonify(response_data), 200
-#     else:
-#         response_data = {"error": "Hero not found"}
-#         response = make_response(jsonify(response_data), 404)
-#         return response
-    
-# def get_powers_by_id(id):
-#     power = Power.query.filter_by(id=id).first()
-
-#     if power:
-#         response_data = power.to_dict()
-
-#         response = make_response(
-#             jsonify(response_data),
-#             200
-#         )
-
-#         return response
-#     else:
-#         response_data = {"error": "Power not found"}
-#         response = make_response(jsonify(response_data),
-                                 
-#          404)
-#         return response
-
-# def update_power(id):
-#     power = Power.query.get(id)
-#     if power is None:
-#         return jsonify({'error': 'Power not found'}), 404
-
-#     data = request.get_json()
-#     if 'description' in data:
-#         power.description = data['description']
-#         db.session.commit()
-#         return jsonify(power.to_dict()), 200
-
-#     return jsonify({'error': 'No description provided'}), 400
+            return make_response(
+                jsonify(raven),
+                200
+            )
 
 
-# @app.route('/hero_power',methods= ['POST'])
-# def create_hero_power():
-#     data = request.get_json()
+     def patch(self,id):
+        power = Power.query.get(id)
+
+        if power is None:
+            return (404, {"error": "Power not found"})
 
 
-#     if 'strength' not in data or 'power_id' not in data or 'hero_id' not in data:
-#         return jsonify({'errors': ['Missing required fields']}
-                       
-#         ), 400
+        data = patch_args.parse_args()
+        if 'description' in data:
+            power.description = data['description']
+        else:
+            return(400, {"errors": ["validation errors"]})
 
-#     power = Power.query.get(data['power_id'])
-#     hero = Hero.query.get(data['hero_id'])
+        db.session.commit()
 
-#     if power is None or hero is None:
-#         return jsonify({'errors': ['Power or Hero not found']}
-        
-#         ), 404
+        return make_response(
+            jsonify(power_schema.dump(power)),
+            200
+        )
 
-#     hero_power = Hero_power(strength=data['strength'], power_id=power.id, hero_id=hero.id)
-#     db.session.add(hero_power)
-#     db.session.commit()
+api.add_resource(PowersByID, '/power/<int:id>')
 
-#     hero = Hero.query.get(data['hero_id'])
-#     powers_list = [{**hp.powers.to_dict()} for hp in hero.hero_powers]
-#     response_data = {**hero.to_dict(), "powers": powers_list}
+class HeroPowers(Resource):
+    def post(self):
+        data = post_args.parse_args()
+        new_heropower = Hero_power(
+            strength = data["strength"],
+            hero_id = data["hero_id"],
+            powers_id = data["powers_id"]
+        )
+        db.session.add(new_heropower)
+        db.session.commit()
 
-#     response = make_response(jsonify(
-#         response_data
-#     ),200)
+        raine = heropower_schema.dump(new_heropower)
 
-#     return response
+        return make_response(
+            jsonify(raine),
+            201
+        )
 
-
+api.add_resource(HeroPowers, '/hero_powers')
 
 
 if __name__ == '__main__':
