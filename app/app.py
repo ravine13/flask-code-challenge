@@ -75,6 +75,7 @@ api.add_resource(Heroes, '/heros')
 class HeroById(Resource):
     def get(self, id):
         hero = Hero.query.filter_by(id=id).first()
+        powers = Power.query.join(Hero_power).filter_by(hero_id=id).all()
 
         if hero is None:
             response = make_response(
@@ -83,8 +84,20 @@ class HeroById(Resource):
             )
             return response
         else:
+            powers_list = []
+            for power in powers:
+                powers_list.append({
+                    "id": power.id,
+                    "name": power.name,
+                    "description": power.description
+                })
+            hero_dict = hero_schema.dump(hero)
+            hero_dict["powers"] = powers_list
 
-            return hero_schema.dump(hero)
+            return hero_dict
+
+
+
 
 api.add_resource(HeroById, '/hero/<int:id>')
         
